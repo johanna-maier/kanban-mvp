@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from backend.app.database import get_connection, init_db, hash_password
+from backend.app.ai import chat
 
 
 @asynccontextmanager
@@ -66,6 +67,15 @@ def login(body: LoginRequest) -> dict[str, object]:
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+# --- AI ---
+
+
+@app.get("/api/ai/test")
+def ai_test() -> dict[str, str]:
+    reply = chat([{"role": "user", "content": "What is 2+2? Reply with just the number."}])
+    return {"reply": reply}
 
 
 # --- Board ---

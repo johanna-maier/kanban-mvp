@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-docker rm -f pm-app
+sudo docker rm -f pm-app

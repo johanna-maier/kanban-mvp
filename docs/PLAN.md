@@ -33,6 +33,10 @@ Sidenote for human user: Original PLAN.md can be found here https://github.com/e
 - **Optimistic UI**: Mutations (add, delete, move, rename) update local state immediately, then fire the API call. No rollback on failure for MVP simplicity.
 - **API client**: `frontend/src/lib/api.ts` is a thin fetch wrapper with typed responses. No auth tokens for MVP (user_id passed directly).
 - **SQLite in Docker**: The database lives at `backend/data/kanban.db` inside the container. Data is ephemeral (lost on container rebuild). A volume mount could persist it but is not configured for MVP.
+- **AI client**: `backend/app/ai.py` uses `httpx` to call OpenRouter (`openai/gpt-oss-120b`). Requires `OPENROUTER_API_KEY` in `.env` at project root.
+- **Docker on Linux**: Scripts use `sudo docker`. The start script passes `--env-file .env` so the container has access to secrets.
+- **Running tests**: Backend tests require `PYTHONPATH=.` from the project root: `cd pm && source backend/.venv/bin/activate && PYTHONPATH=. pytest backend/tests/ -v`.
+- **Container commands**: `bash scripts/start-linux.sh` (build + run), `bash scripts/stop-linux.sh` (stop + remove). After start, test with `curl http://127.0.0.1:8000/api/ai/test`.
 
 ## Part 1: Plan and documentation
 
@@ -153,9 +157,9 @@ Success criteria
 ## Part 8: AI connectivity
 
 Checklist
-- [ ] Add OpenRouter client in backend with env config.
-- [ ] Implement a simple `2+2` test endpoint.
-- [ ] Add unit tests with mock client.
+- [x] Add OpenRouter client in backend with env config.
+- [x] Implement a simple `2+2` test endpoint.
+- [x] Add unit tests with mock client.
 
 Tests
 - Unit test mocks OpenRouter client.
