@@ -4,7 +4,7 @@ This file is the full, executable plan. Do not start a part until the user appro
 
 Approval rule: complete Part 1 and obtain user approval before starting Part 2 or later work.
 
-Sidenote for human user: Original PLAN.md can be found here https://github.com/ed-donner/pm/blob/main/docs/PLAN.md.
+Sidenote for user: Original PLAN.md can be found here https://github.com/ed-donner/pm/blob/main/docs/PLAN.md.
 
 ## Global constraints
 
@@ -37,6 +37,10 @@ Sidenote for human user: Original PLAN.md can be found here https://github.com/e
 - **Docker on Linux**: Scripts use `sudo docker`. The start script passes `--env-file .env` so the container has access to secrets.
 - **Running tests**: Backend tests require `PYTHONPATH=.` from the project root: `cd pm && source backend/.venv/bin/activate && PYTHONPATH=. pytest backend/tests/ -v`.
 - **Container commands**: `bash scripts/start-linux.sh` (build + run), `bash scripts/stop-linux.sh` (stop + remove). After start, test with `curl http://127.0.0.1:8000/api/ai/test`.
+- **Structured AI output**: The AI is prompted to reply with JSON `{"reply": "...", "actions": [...]}`. Actions support create/update/move/delete cards. `backend/app/ai_chat.py` parses, validates via Pydantic, and applies actions transactionally.
+- **AI e2e testing**: Playwright e2e tests mock the `/api/ai/chat` route (no real OpenRouter key needed). Unit tests mock `httpx.post`.
+- **Card inline editing**: Cards use `<input>` fields for title and details (same pattern as column title). Changes fire `api.updateCard()` optimistically. Since text lives in input values (not text nodes), tests use `getByDisplayValue` (unit) and `getByLabel`/`toHaveValue` (e2e).
+- **DB auto-seed**: The database is created and seeded (default user, board, 5 columns) on first startup. Safe to delete `backend/data/kanban.db` — it regenerates on next run.
 
 ## Part 1: Plan and documentation
 
@@ -74,8 +78,6 @@ Success criteria
 - Start/stop scripts operate on all platforms.
 
 ## Part 3: Add in Frontend
-
-Note: The current frontend demo does not support card editing (only add/delete). Card editing will be added in Part 7 when the backend is wired up.
 
 Checklist
 - [x] Configure Next.js for static build output.
@@ -186,10 +188,10 @@ Success criteria
 ## Part 10: AI sidebar
 
 Checklist
-- [ ] Build sidebar chat UI in the frontend.
-- [ ] Wire chat UI to backend AI endpoint.
-- [ ] Apply AI board updates and refresh UI.
-- [ ] Add e2e coverage for chat and update flows.
+- [x] Build sidebar chat UI in the frontend.
+- [x] Wire chat UI to backend AI endpoint.
+- [x] Apply AI board updates and refresh UI.
+- [x] Add e2e coverage for chat and update flows.
 
 Tests
 - E2E chat test confirms responses and board updates.

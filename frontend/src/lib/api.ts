@@ -80,3 +80,23 @@ export async function moveCard(cardId: number, columnId: number, position: numbe
 export async function deleteCard(cardId: number): Promise<void> {
   await fetch(`${API_BASE}/cards/${cardId}`, { method: "DELETE" });
 }
+
+export type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type ChatResponse = {
+  reply: string;
+  actions_applied: string[];
+};
+
+export async function chatWithAI(userId: number, messages: ChatMessage[]): Promise<ChatResponse> {
+  const res = await fetch(`${API_BASE}/ai/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, messages }),
+  });
+  if (!res.ok) throw new Error("AI chat request failed");
+  return res.json();
+}

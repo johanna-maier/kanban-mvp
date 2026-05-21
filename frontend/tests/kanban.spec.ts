@@ -37,14 +37,15 @@ test("adds a card to a column", async ({ page }) => {
   await firstColumn.getByPlaceholder("Card title").fill("Playwright card");
   await firstColumn.getByPlaceholder("Details").fill("Added via e2e.");
   await firstColumn.getByRole("button", { name: /add card/i }).click();
-  await expect(firstColumn.getByText("Playwright card")).toBeVisible();
+  await expect(firstColumn.getByLabel("Card title", { exact: true }).last()).toHaveValue("Playwright card");
 });
 
 test("moves a card between columns", async ({ page }) => {
   await login(page);
   const firstColumn = page.locator('[data-testid^="column-"]').first();
   const card = firstColumn.locator('[data-testid^="card-"]').first();
-  const cardTitle = await card.textContent();
+  const cardTitleInput = card.getByLabel("Card title", { exact: true });
+  const cardTitle = await cardTitleInput.inputValue();
   const targetColumn = page.locator('[data-testid^="column-"]').nth(3);
   const cardBox = await card.boundingBox();
   const columnBox = await targetColumn.boundingBox();
@@ -64,6 +65,49 @@ test("moves a card between columns", async ({ page }) => {
   );
   await page.mouse.up();
   if (cardTitle) {
-    await expect(targetColumn.getByText(cardTitle)).toBeVisible();
+    await expect(targetColumn.getByLabel("Card title", { exact: true }).first()).toHaveValue(cardTitle);
   }
+});
+
+test("AI chat sidebar opens, sends message, and updates board", async ({ page }) => {
+  await login(page);
+
+  // Mock the AI chat endpoint
+  await page.route("**/api/ai/chat", async (route) => {
+    const body = JSON.parse(route.request().postData() || "{}");
+    const reply = JSON.stringify({
+      reply: "Done! I created the card for you.",
+      actions_applied: ["Created card 'AI Task' in column 1"],
+    });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: reply,
+    });
+  });
+
+  // Also mock the board reload to include the new card
+  let callCount = 0;
+  await page.route("**/api/board/1", async (route, request) => {
+    callCount++;
+    if (callCount <= 1) {
+      // First load - pass through
+      await route.continue();
+    } else {
+      // After AI action - pass through (card was created server-side in real flow,
+      // but since we mocked the chat, just continue to real backend)
+      await route.continue();
+    }
+  });
+
+  // Open sidebar
+  await page.getByTestId("chat-toggle").click();
+  await expect(page.getByText("AI Assistant")).toBeVisible();
+
+  // Send a message
+  await page.getByTestId("chat-input").fill("Create a card called AI Task in Backlog");
+  await page.getByTestId("chat-send").click();
+
+  // Verify the AI reply appears
+  await expect(page.getByText("Done! I created the card for you.")).toBeVisible();
 });

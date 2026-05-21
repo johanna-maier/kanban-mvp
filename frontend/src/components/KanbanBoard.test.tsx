@@ -78,7 +78,7 @@ describe("KanbanBoard", () => {
     await userEvent.click(within(column).getByRole("button", { name: /add card/i }));
 
     await waitFor(() => {
-      expect(within(column).getByText("New card")).toBeInTheDocument();
+      expect(within(column).getByDisplayValue("New card")).toBeInTheDocument();
     });
 
     const deleteButton = within(column).getByRole("button", {
@@ -86,7 +86,7 @@ describe("KanbanBoard", () => {
     });
     await userEvent.click(deleteButton);
 
-    expect(within(column).queryByText("New card")).not.toBeInTheDocument();
+    expect(within(column).queryByDisplayValue("New card")).not.toBeInTheDocument();
   });
 
   it("adds a card with no details and gets default text", async () => {
@@ -101,7 +101,7 @@ describe("KanbanBoard", () => {
     await userEvent.click(within(column).getByRole("button", { name: /add card/i }));
 
     await waitFor(() => {
-      expect(within(column).getByText("No details yet.")).toBeInTheDocument();
+      expect(within(column).getByDisplayValue("No details yet.")).toBeInTheDocument();
     });
   });
 

@@ -6,9 +6,10 @@ import type { Card } from "@/lib/kanban";
 type KanbanCardProps = {
   card: Card;
   onDelete: (cardId: string) => void;
+  onUpdate: (cardId: string, title: string, details: string) => void;
 };
 
-export const KanbanCard = ({ card, onDelete }: KanbanCardProps) => {
+export const KanbanCard = ({ card, onDelete, onUpdate }: KanbanCardProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id });
 
@@ -31,13 +32,19 @@ export const KanbanCard = ({ card, onDelete }: KanbanCardProps) => {
       data-testid={`card-${card.id}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h4 className="font-display text-base font-semibold text-[var(--navy-dark)]">
-            {card.title}
-          </h4>
-          <p className="mt-2 text-sm leading-6 text-[var(--gray-text)]">
-            {card.details}
-          </p>
+        <div className="w-full">
+          <input
+            value={card.title}
+            onChange={(e) => onUpdate(card.id, e.target.value, card.details)}
+            className="w-full bg-transparent font-display text-base font-semibold text-[var(--navy-dark)] outline-none"
+            aria-label="Card title"
+          />
+          <input
+            value={card.details}
+            onChange={(e) => onUpdate(card.id, card.title, e.target.value)}
+            className="mt-2 w-full bg-transparent text-sm leading-6 text-[var(--gray-text)] outline-none"
+            aria-label="Card details"
+          />
         </div>
         <button
           type="button"

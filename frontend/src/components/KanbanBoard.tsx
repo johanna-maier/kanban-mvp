@@ -13,6 +13,7 @@ import {
 } from "@dnd-kit/core";
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
+import { ChatSidebar } from "@/components/ChatSidebar";
 import * as api from "@/lib/api";
 import type { ApiBoard, ApiCard } from "@/lib/api";
 import type { Card, Column, BoardData } from "@/lib/kanban";
@@ -47,6 +48,7 @@ export const KanbanBoard = ({ userId, onLogout }: KanbanBoardProps) => {
   const [board, setBoard] = useState<BoardData | null>(null);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [apiBoard, setApiBoard] = useState<ApiBoard | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const loadBoard = useCallback(async () => {
     const data = await api.getBoard(userId);
@@ -148,6 +150,21 @@ export const KanbanBoard = ({ userId, onLogout }: KanbanBoardProps) => {
     await api.deleteCard(parseCardId(cardId));
   };
 
+  const handleUpdateCard = async (cardId: string, title: string, details: string) => {
+    setBoard((prev) =>
+      prev
+        ? {
+            ...prev,
+            cards: {
+              ...prev.cards,
+              [cardId]: { ...prev.cards[cardId], title, details },
+            },
+          }
+        : prev
+    );
+    await api.updateCard(parseCardId(cardId), { title, details });
+  };
+
   const activeCard = activeCardId ? cardsById[activeCardId] : null;
 
   if (!board) {
@@ -226,6 +243,7 @@ export const KanbanBoard = ({ userId, onLogout }: KanbanBoardProps) => {
                 onRename={handleRenameColumn}
                 onAddCard={handleAddCard}
                 onDeleteCard={handleDeleteCard}
+                onUpdateCard={handleUpdateCard}
               />
             ))}
           </section>
@@ -238,6 +256,25 @@ export const KanbanBoard = ({ userId, onLogout }: KanbanBoardProps) => {
           </DragOverlay>
         </DndContext>
       </main>
+
+      <button
+        type="button"
+        onClick={() => setChatOpen(true)}
+        className="fixed bottom-6 right-6 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--secondary-purple)] text-white shadow-lg transition hover:opacity-90"
+        aria-label="Open AI chat"
+        data-testid="chat-toggle"
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      <ChatSidebar
+        userId={userId}
+        isOpen={chatOpen}
+        onClose={() => setChatOpen(false)}
+        onBoardUpdated={loadBoard}
+      />
     </div>
   );
 };
