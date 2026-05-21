@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import * as api from "@/lib/api";
 import type { ChatMessage } from "@/lib/api";
 
+type DisplayMessage = ChatMessage & { id: string };
+
 type ChatSidebarProps = {
   userId: number;
   onBoardUpdated: () => void;
@@ -12,7 +14,7 @@ type ChatSidebarProps = {
 };
 
 export const ChatSidebar = ({ userId, onBoardUpdated, isOpen, onClose }: ChatSidebarProps) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -26,21 +28,22 @@ export const ChatSidebar = ({ userId, onBoardUpdated, isOpen, onClose }: ChatSid
     const text = input.trim();
     if (!text || loading) return;
 
-    const userMsg: ChatMessage = { role: "user", content: text };
+    const userMsg: DisplayMessage = { id: Math.random().toString(36).slice(2), role: "user", content: text };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput("");
     setLoading(true);
 
     try {
-      const response = await api.chatWithAI(userId, updatedMessages);
-      const assistantMsg: ChatMessage = { role: "assistant", content: response.reply };
+      const apiMessages: ChatMessage[] = updatedMessages.map(({ role, content }) => ({ role, content }));
+      const response = await api.chatWithAI(userId, apiMessages);
+      const assistantMsg: DisplayMessage = { id: Math.random().toString(36).slice(2), role: "assistant", content: response.reply };
       setMessages([...updatedMessages, assistantMsg]);
       if (response.actions_applied.length > 0) {
         onBoardUpdated();
       }
     } catch {
-      const errorMsg: ChatMessage = { role: "assistant", content: "Sorry, something went wrong." };
+      const errorMsg: DisplayMessage = { id: Math.random().toString(36).slice(2), role: "assistant", content: "Sorry, something went wrong." };
       setMessages([...updatedMessages, errorMsg]);
     } finally {
       setLoading(false);
@@ -73,9 +76,9 @@ export const ChatSidebar = ({ userId, onBoardUpdated, isOpen, onClose }: ChatSid
             Ask me to create, move, or update cards on your board.
           </p>
         )}
-        {messages.map((msg, i) => (
+        {messages.map((msg) => (
           <div
-            key={i}
+            key={msg.id}
             className={`mb-3 rounded-xl px-4 py-3 text-sm leading-relaxed ${
               msg.role === "user"
                 ? "ml-8 bg-[var(--primary-blue)] text-white"

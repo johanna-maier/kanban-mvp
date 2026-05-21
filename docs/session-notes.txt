@@ -1,0 +1,103 @@
+Session notes — 2026-05-22
+=========================
+
+Literal prompts given during this session
+-----------------------------------------
+
+1. /init
+   (slash command — analyse the codebase and create a CLAUDE.md file)
+
+2. "Please read PLAN.md in the docs folder to understand everything that has been
+   built so far and any supporting docs."
+
+3. "Please run all tests to confirm everything is working, bringing up the server
+   as needed and bringing down the server at the end."
+
+4. "I'd like you to run and test the docker version too."
+
+5. "help me configure what i need"
+   (after Docker start script failed due to sudo requiring a terminal)
+
+6. "but one question: Arent both versions useful, i.e. to have a test that runs
+   without docker and a second one with?"
+
+7. "yes, but explain it better to me too."
+   (agreeing to implement dual-mode Playwright config)
+
+8. "please update PLAN.md with the current testing approach"
+
+9. "I want to note all useful commands and instructions from our conversation so
+   far. Please write a txt file with all the relevant inputs and instructions
+   that I gave you."
+
+10. "but also add the literal prompts i gave you"
+
+
+Tasks completed in this session, in order:
+
+1. CREATED CLAUDE.md
+   - Ran /init to generate a CLAUDE.md at the project root.
+   - Covers architecture overview, all dev commands, key constraints, color scheme,
+     and coding standards drawn from AGENTS.md and the codebase.
+
+2. READ ALL DOCS
+   - Reviewed docs/PLAN.md, docs/db-schema.md, frontend/AGENTS.md, backend/AGENTS.md.
+   - All 10 MVP parts confirmed complete.
+
+3. RAN ALL TESTS (local, no Docker)
+   - Started backend manually: source backend/.venv/bin/activate &&
+     PYTHONPATH=. uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
+   - Frontend unit tests:  cd frontend && npm run test:unit   → 22 passed
+   - Frontend e2e tests:   cd frontend && npm run test:e2e    → 6 passed
+     (Playwright auto-starts next dev; e2e tests proxy /api/* to local uvicorn)
+   - Backend tests:        PYTHONPATH=. pytest backend/tests/ -v  → 30 passed
+   - Stopped backend after tests.
+
+4. DOCKER SETUP FIX
+   - scripts/start-linux.sh and scripts/stop-linux.sh used "sudo docker".
+   - User is already in the docker group, so sudo is unnecessary and blocked
+     in non-interactive shells.
+   - Removed "sudo" from both Linux scripts.
+
+5. RAN ALL TESTS (Docker)
+   - Built and started container: bash scripts/start-linux.sh
+   - Ran e2e tests against container on port 8000.
+   - Stopped container: bash scripts/stop-linux.sh
+
+6. DUAL-MODE PLAYWRIGHT CONFIG
+   - Insight: both dev-mode and Docker-mode e2e tests are valuable — they test
+     different things.
+   - Added DOCKER_TEST env var support to frontend/playwright.config.ts:
+       npm run test:e2e               → dev mode (starts next dev, proxies to :8000)
+       DOCKER_TEST=1 npm run test:e2e → Docker mode (hits container directly on :8000)
+   - When DOCKER_TEST is set, webServer is undefined (Playwright skips launching
+     next dev and assumes the container is already running).
+
+7. UPDATED docs/PLAN.md
+   - Added a "Test modes" section after "Testing best practices" documenting
+     the three test modes: unit tests, e2e dev mode, and e2e Docker mode,
+     with commands and guidance on when to use each.
+
+
+Key commands reference
+----------------------
+
+# Backend (local dev)
+source backend/.venv/bin/activate
+PYTHONPATH=. uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
+
+# Frontend unit tests
+cd frontend && npm run test:unit
+
+# Frontend e2e tests (dev mode — needs backend running)
+cd frontend && npm run test:e2e
+
+# Backend tests
+PYTHONPATH=. pytest backend/tests/ -v
+
+# Docker
+bash scripts/start-linux.sh
+bash scripts/stop-linux.sh
+
+# E2E tests against Docker
+cd frontend && DOCKER_TEST=1 npm run test:e2e

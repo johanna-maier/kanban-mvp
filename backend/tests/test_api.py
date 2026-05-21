@@ -41,6 +41,11 @@ def test_rename_column(client):
     assert board["columns"][0]["title"] == "New Name"
 
 
+def test_rename_column_not_found(client):
+    r = client.put("/api/columns/9999", json={"title": "Ghost"})
+    assert r.status_code == 404
+
+
 def test_create_card(client):
     r = client.post("/api/columns/1/cards", json={"title": "Test card", "details": "Some details"})
     assert r.status_code == 200

@@ -130,80 +130,81 @@ def apply_actions(actions: list[dict]) -> list[str]:
     """Apply board actions and return a list of results/errors."""
     results = []
     conn = get_connection()
+    try:
+        for action_data in actions:
+            action = action_data.get("action")
+            try:
+                if action == "create":
+                    a = CardCreateAction(**action_data)
+                    row = conn.execute(
+                        "SELECT COALESCE(MAX(position), -1) + 1 as next_pos FROM cards WHERE column_id = ?",
+                        (a.column_id,),
+                    ).fetchone()
+                    pos = row["next_pos"]
+                    conn.execute(
+                        "INSERT INTO cards (column_id, title, details, position) VALUES (?, ?, ?, ?)",
+                        (a.column_id, a.title, a.details, pos),
+                    )
+                    results.append(f"Created card '{a.title}' in column {a.column_id}")
 
-    for action_data in actions:
-        action = action_data.get("action")
-        try:
-            if action == "create":
-                a = CardCreateAction(**action_data)
-                row = conn.execute(
-                    "SELECT COALESCE(MAX(position), -1) + 1 as next_pos FROM cards WHERE column_id = ?",
-                    (a.column_id,),
-                ).fetchone()
-                pos = row["next_pos"]
-                conn.execute(
-                    "INSERT INTO cards (column_id, title, details, position) VALUES (?, ?, ?, ?)",
-                    (a.column_id, a.title, a.details, pos),
-                )
-                results.append(f"Created card '{a.title}' in column {a.column_id}")
+                elif action == "update":
+                    a = CardUpdateAction(**action_data)
+                    card = conn.execute("SELECT * FROM cards WHERE id = ?", (a.card_id,)).fetchone()
+                    if not card:
+                        results.append(f"Card {a.card_id} not found")
+                        continue
+                    title = a.title if a.title is not None else card["title"]
+                    details = a.details if a.details is not None else card["details"]
+                    conn.execute(
+                        "UPDATE cards SET title = ?, details = ? WHERE id = ?",
+                        (title, details, a.card_id),
+                    )
+                    results.append(f"Updated card {a.card_id}")
 
-            elif action == "update":
-                a = CardUpdateAction(**action_data)
-                card = conn.execute("SELECT * FROM cards WHERE id = ?", (a.card_id,)).fetchone()
-                if not card:
-                    results.append(f"Card {a.card_id} not found")
-                    continue
-                title = a.title if a.title is not None else card["title"]
-                details = a.details if a.details is not None else card["details"]
-                conn.execute(
-                    "UPDATE cards SET title = ?, details = ? WHERE id = ?",
-                    (title, details, a.card_id),
-                )
-                results.append(f"Updated card {a.card_id}")
+                elif action == "move":
+                    a = CardMoveAction(**action_data)
+                    card = conn.execute("SELECT column_id, position FROM cards WHERE id = ?", (a.card_id,)).fetchone()
+                    if not card:
+                        results.append(f"Card {a.card_id} not found")
+                        continue
+                    old_col = card["column_id"]
+                    old_pos = card["position"]
+                    conn.execute(
+                        "UPDATE cards SET position = position - 1 WHERE column_id = ? AND position > ?",
+                        (old_col, old_pos),
+                    )
+                    conn.execute(
+                        "UPDATE cards SET position = position + 1 WHERE column_id = ? AND position >= ?",
+                        (a.column_id, a.position),
+                    )
+                    conn.execute(
+                        "UPDATE cards SET column_id = ?, position = ? WHERE id = ?",
+                        (a.column_id, a.position, a.card_id),
+                    )
+                    results.append(f"Moved card {a.card_id} to column {a.column_id}")
 
-            elif action == "move":
-                a = CardMoveAction(**action_data)
-                card = conn.execute("SELECT column_id, position FROM cards WHERE id = ?", (a.card_id,)).fetchone()
-                if not card:
-                    results.append(f"Card {a.card_id} not found")
-                    continue
-                old_col = card["column_id"]
-                old_pos = card["position"]
-                conn.execute(
-                    "UPDATE cards SET position = position - 1 WHERE column_id = ? AND position > ?",
-                    (old_col, old_pos),
-                )
-                conn.execute(
-                    "UPDATE cards SET position = position + 1 WHERE column_id = ? AND position >= ?",
-                    (a.column_id, a.position),
-                )
-                conn.execute(
-                    "UPDATE cards SET column_id = ?, position = ? WHERE id = ?",
-                    (a.column_id, a.position, a.card_id),
-                )
-                results.append(f"Moved card {a.card_id} to column {a.column_id}")
+                elif action == "delete":
+                    a = CardDeleteAction(**action_data)
+                    card = conn.execute("SELECT column_id, position FROM cards WHERE id = ?", (a.card_id,)).fetchone()
+                    if not card:
+                        results.append(f"Card {a.card_id} not found")
+                        continue
+                    conn.execute("DELETE FROM cards WHERE id = ?", (a.card_id,))
+                    conn.execute(
+                        "UPDATE cards SET position = position - 1 WHERE column_id = ? AND position > ?",
+                        (card["column_id"], card["position"]),
+                    )
+                    results.append(f"Deleted card {a.card_id}")
 
-            elif action == "delete":
-                a = CardDeleteAction(**action_data)
-                card = conn.execute("SELECT column_id, position FROM cards WHERE id = ?", (a.card_id,)).fetchone()
-                if not card:
-                    results.append(f"Card {a.card_id} not found")
-                    continue
-                conn.execute("DELETE FROM cards WHERE id = ?", (a.card_id,))
-                conn.execute(
-                    "UPDATE cards SET position = position - 1 WHERE column_id = ? AND position > ?",
-                    (card["column_id"], card["position"]),
-                )
-                results.append(f"Deleted card {a.card_id}")
+                else:
+                    results.append(f"Unknown action: {action}")
 
-            else:
-                results.append(f"Unknown action: {action}")
+            except Exception as e:
+                results.append(f"Error applying {action}: {e}")
 
-        except Exception as e:
-            results.append(f"Error applying {action}: {e}")
-
-    conn.commit()
-    conn.close()
+        conn.commit()
+    finally:
+        conn.close()
     return results
 
 

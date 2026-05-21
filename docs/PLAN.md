@@ -49,13 +49,23 @@ The Next.js dev server proxies `/api/*` to `localhost:8000`. Use this during fea
 
 **E2E Docker mode — validate the full build**
 
+A single script handles the full cycle (build → start → wait → test → teardown):
+
 ```bash
-bash scripts/start-linux.sh                       # build image + start container on port 8000
-cd frontend && DOCKER_TEST=1 npm run test:e2e     # Playwright hits container directly
-bash scripts/stop-linux.sh
+bash scripts/test-docker-linux.sh   # Linux
+bash scripts/test-docker-mac.sh     # Mac
+scripts/test-docker-windows.ps1     # Windows (PowerShell)
 ```
 
-Playwright skips `next dev` entirely and targets the container. Use this before shipping or after changes to the Dockerfile, Next.js build config, or static file serving.
+The script builds the image, starts the container, waits for `/api/health` to respond, runs `DOCKER_TEST=1 npm run test:e2e` (Playwright hits the container directly on port 8000, no `next dev`), then removes the container — even if tests fail. Use this before shipping or after any change to the Dockerfile, Next.js build config, or static file serving.
+
+**When to use each**
+
+| Mode | When |
+|---|---|
+| Unit tests | Always — on every save or before every commit |
+| E2E dev mode | While building features — fast, no Docker build needed |
+| E2E Docker mode | Before shipping, or after changes to Dockerfile / build pipeline |
 
 ## Design decisions
 

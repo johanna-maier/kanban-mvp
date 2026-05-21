@@ -1,6 +1,7 @@
+import os
 import sqlite3
+from hashlib import scrypt
 from pathlib import Path
-from hashlib import sha256
 
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "kanban.db"
 
@@ -35,9 +36,22 @@ CREATE TABLE IF NOT EXISTS cards (
 
 DEFAULT_COLUMNS = ["Backlog", "Discovery", "In Progress", "Review", "Done"]
 
+_SCRYPT_N = 16384
+_SCRYPT_R = 8
+_SCRYPT_P = 1
+
 
 def hash_password(password: str) -> str:
-    return sha256(password.encode()).hexdigest()
+    salt = os.urandom(16)
+    h = scrypt(password.encode(), salt=salt, n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P)
+    return salt.hex() + "$" + h.hex()
+
+
+def verify_password(password: str, stored: str) -> bool:
+    salt_hex, hash_hex = stored.split("$", 1)
+    salt = bytes.fromhex(salt_hex)
+    h = scrypt(password.encode(), salt=salt, n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P)
+    return h.hex() == hash_hex
 
 
 def get_connection(db_path: Path | None = None) -> sqlite3.Connection:
@@ -53,21 +67,22 @@ def init_db(db_path: Path | None = None) -> None:
     conn = get_connection(db_path)
     conn.executescript(SCHEMA_SQL)
 
-    # Seed default user and board if empty
     row = conn.execute("SELECT COUNT(*) as c FROM users").fetchone()
     if row["c"] == 0:
         pw_hash = hash_password("password")
-        conn.execute(
+        cursor = conn.execute(
             "INSERT INTO users (username, password_hash) VALUES (?, ?)",
             ("user", pw_hash),
         )
-        conn.execute(
-            "INSERT INTO boards (user_id, title) VALUES (1, 'My Board')"
+        user_id = cursor.lastrowid
+        board_cursor = conn.execute(
+            "INSERT INTO boards (user_id, title) VALUES (?, 'My Board')", (user_id,)
         )
+        board_id = board_cursor.lastrowid
         for i, title in enumerate(DEFAULT_COLUMNS):
             conn.execute(
-                "INSERT INTO columns (board_id, title, position) VALUES (1, ?, ?)",
-                (title, i),
+                "INSERT INTO columns (board_id, title, position) VALUES (?, ?, ?)",
+                (board_id, title, i),
             )
         conn.commit()
     conn.close()

@@ -44,11 +44,12 @@ export async function getBoard(userId: number): Promise<ApiBoard> {
 }
 
 export async function renameColumn(columnId: number, title: string): Promise<void> {
-  await fetch(`${API_BASE}/columns/${columnId}`, {
+  const res = await fetch(`${API_BASE}/columns/${columnId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title }),
   });
+  if (!res.ok) throw new Error("Failed to rename column");
 }
 
 export async function createCard(columnId: number, title: string, details: string): Promise<ApiCard> {
@@ -62,11 +63,12 @@ export async function createCard(columnId: number, title: string, details: strin
 }
 
 export async function updateCard(cardId: number, data: { title?: string; details?: string }): Promise<void> {
-  await fetch(`${API_BASE}/cards/${cardId}`, {
+  const res = await fetch(`${API_BASE}/cards/${cardId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
+  if (!res.ok) throw new Error("Failed to update card");
 }
 
 export async function moveCard(cardId: number, columnId: number, position: number): Promise<void> {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -48,12 +48,19 @@ export const KanbanBoard = ({ userId, onLogout }: KanbanBoardProps) => {
   const [board, setBoard] = useState<BoardData | null>(null);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [apiBoard, setApiBoard] = useState<ApiBoard | null>(null);
+  const [boardError, setBoardError] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const renameTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const updateTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const loadBoard = useCallback(async () => {
-    const data = await api.getBoard(userId);
-    setApiBoard(data);
-    setBoard(apiBoardToBoardData(data));
+    try {
+      const data = await api.getBoard(userId);
+      setApiBoard(data);
+      setBoard(apiBoardToBoardData(data));
+    } catch {
+      setBoardError("Failed to load board. Please refresh the page.");
+    }
   }, [userId]);
 
   useEffect(() => {
@@ -95,7 +102,7 @@ export const KanbanBoard = ({ userId, onLogout }: KanbanBoardProps) => {
     await api.moveCard(cardId, columnId, position);
   };
 
-  const handleRenameColumn = async (columnId: string, title: string) => {
+  const handleRenameColumn = (columnId: string, title: string) => {
     setBoard((prev) =>
       prev
         ? {
@@ -106,7 +113,10 @@ export const KanbanBoard = ({ userId, onLogout }: KanbanBoardProps) => {
           }
         : prev
     );
-    await api.renameColumn(parseColumnId(columnId), title);
+    clearTimeout(renameTimers.current[columnId]);
+    renameTimers.current[columnId] = setTimeout(() => {
+      api.renameColumn(parseColumnId(columnId), title);
+    }, 500);
   };
 
   const handleAddCard = async (columnId: string, title: string, details: string) => {
@@ -150,7 +160,7 @@ export const KanbanBoard = ({ userId, onLogout }: KanbanBoardProps) => {
     await api.deleteCard(parseCardId(cardId));
   };
 
-  const handleUpdateCard = async (cardId: string, title: string, details: string) => {
+  const handleUpdateCard = (cardId: string, title: string, details: string) => {
     setBoard((prev) =>
       prev
         ? {
@@ -162,10 +172,21 @@ export const KanbanBoard = ({ userId, onLogout }: KanbanBoardProps) => {
           }
         : prev
     );
-    await api.updateCard(parseCardId(cardId), { title, details });
+    clearTimeout(updateTimers.current[cardId]);
+    updateTimers.current[cardId] = setTimeout(() => {
+      api.updateCard(parseCardId(cardId), { title, details });
+    }, 500);
   };
 
   const activeCard = activeCardId ? cardsById[activeCardId] : null;
+
+  if (boardError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-sm text-red-600">{boardError}</p>
+      </div>
+    );
+  }
 
   if (!board) {
     return (

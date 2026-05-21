@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from backend.app.database import get_connection, init_db, hash_password
+from backend.app.database import get_connection, init_db, verify_password
 from backend.app.ai import chat
 from backend.app.ai_chat import chat_with_board
 
@@ -62,7 +62,7 @@ def login(body: LoginRequest) -> dict[str, object]:
         (body.username,),
     ).fetchone()
     conn.close()
-    if not row or row["password_hash"] != hash_password(body.password):
+    if not row or not verify_password(body.password, row["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return {"user_id": row["id"], "username": body.username}
 
@@ -131,9 +131,12 @@ def get_board(user_id: int) -> dict[str, object]:
 @app.put("/api/columns/{column_id}")
 def rename_column(column_id: int, body: ColumnRename) -> dict[str, object]:
     conn = get_connection()
-    conn.execute(
+    cursor = conn.execute(
         "UPDATE columns SET title = ? WHERE id = ?", (body.title, column_id)
     )
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Column not found")
     conn.commit()
     conn.close()
     return {"id": column_id, "title": body.title}
