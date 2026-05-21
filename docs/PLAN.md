@@ -26,6 +26,37 @@ Sidenote for user: Original PLAN.md can be found here https://github.com/ed-donn
 - Use `/api/health` for container liveness checks.
 - Mock API calls in unit tests (vi.mock); e2e tests hit the real backend.
 
+## Test modes
+
+**Unit tests — no server needed**
+
+```bash
+cd frontend && npm run test:unit       # Vitest + Testing Library, all API calls mocked
+PYTHONPATH=. pytest backend/tests/ -v  # pytest + FastAPI TestClient, no port bound
+```
+
+**E2E dev mode — daily development**
+
+Start the backend first, then run Playwright (it auto-starts `next dev` on port 3000):
+
+```bash
+source backend/.venv/bin/activate
+PYTHONPATH=. uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 &
+cd frontend && npm run test:e2e
+```
+
+The Next.js dev server proxies `/api/*` to `localhost:8000`. Use this during feature work — no Docker build needed.
+
+**E2E Docker mode — validate the full build**
+
+```bash
+bash scripts/start-linux.sh                       # build image + start container on port 8000
+cd frontend && DOCKER_TEST=1 npm run test:e2e     # Playwright hits container directly
+bash scripts/stop-linux.sh
+```
+
+Playwright skips `next dev` entirely and targets the container. Use this before shipping or after changes to the Dockerfile, Next.js build config, or static file serving.
+
 ## Design decisions
 
 - **ID namespacing**: Column IDs are prefixed `col-` and card IDs `card-` in the frontend to prevent dnd-kit collisions (SQLite auto-increments both from 1). The API client strips prefixes before sending numeric IDs to the backend.
