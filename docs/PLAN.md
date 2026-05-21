@@ -171,10 +171,10 @@ Success criteria
 ## Part 9: Structured AI updates
 
 Checklist
-- [ ] Define structured output schema for AI response and optional board update.
-- [ ] Send board JSON and conversation history to the model.
-- [ ] Validate AI output and apply updates safely.
-- [ ] Add tests for schema validation and update logic.
+- [x] Define structured output schema for AI response and optional board update.
+- [x] Send board JSON and conversation history to the model.
+- [x] Validate AI output and apply updates safely.
+- [x] Add tests for schema validation and update logic.
 
 Tests
 - Contract tests for schema validation.

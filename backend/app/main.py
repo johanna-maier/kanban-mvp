@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from backend.app.database import get_connection, init_db, hash_password
 from backend.app.ai import chat
+from backend.app.ai_chat import chat_with_board
 
 
 @asynccontextmanager
@@ -45,6 +46,11 @@ class ColumnRename(BaseModel):
     title: str
 
 
+class ChatRequest(BaseModel):
+    user_id: int
+    messages: list[dict[str, str]]
+
+
 # --- Auth ---
 
 
@@ -76,6 +82,12 @@ def health() -> dict[str, str]:
 def ai_test() -> dict[str, str]:
     reply = chat([{"role": "user", "content": "What is 2+2? Reply with just the number."}])
     return {"reply": reply}
+
+
+@app.post("/api/ai/chat")
+def ai_chat(body: ChatRequest) -> dict[str, object]:
+    result = chat_with_board(body.user_id, body.messages)
+    return result
 
 
 # --- Board ---
