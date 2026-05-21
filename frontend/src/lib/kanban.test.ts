@@ -1,4 +1,4 @@
-import { moveCard, type Column } from "@/lib/kanban";
+import { moveCard, createId, type Column } from "@/lib/kanban";
 
 describe("moveCard", () => {
   const baseColumns: Column[] = [
@@ -21,5 +21,38 @@ describe("moveCard", () => {
     const result = moveCard(baseColumns, "card-1", "col-b");
     expect(result[0].cardIds).toEqual(["card-2"]);
     expect(result[1].cardIds).toEqual(["card-3", "card-1"]);
+  });
+
+  it("returns unchanged columns when activeId is not found", () => {
+    const result = moveCard(baseColumns, "nonexistent", "card-1");
+    expect(result).toEqual(baseColumns);
+  });
+
+  it("returns unchanged columns when overId is not found", () => {
+    const result = moveCard(baseColumns, "card-1", "nonexistent");
+    expect(result).toEqual(baseColumns);
+  });
+
+  it("moves card to end of its own column when dropped on column id", () => {
+    const result = moveCard(baseColumns, "card-1", "col-a");
+    expect(result[0].cardIds).toEqual(["card-2", "card-1"]);
+  });
+
+  it("returns unchanged when same-column reorder indices are equal", () => {
+    const result = moveCard(baseColumns, "card-1", "card-1");
+    expect(result).toEqual(baseColumns);
+  });
+});
+
+describe("createId", () => {
+  it("returns a string with the given prefix", () => {
+    const id = createId("card");
+    expect(id.startsWith("card-")).toBe(true);
+  });
+
+  it("generates unique ids", () => {
+    const a = createId("x");
+    const b = createId("x");
+    expect(a).not.toBe(b);
   });
 });

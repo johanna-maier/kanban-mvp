@@ -43,4 +43,58 @@ describe("KanbanBoard", () => {
 
     expect(within(column).queryByText("New card")).not.toBeInTheDocument();
   });
+
+  it("adds a card with no details and gets default text", async () => {
+    render(<KanbanBoard />);
+    const column = getFirstColumn();
+    await userEvent.click(
+      within(column).getByRole("button", { name: /add a card/i })
+    );
+
+    const titleInput = within(column).getByPlaceholderText(/card title/i);
+    await userEvent.type(titleInput, "No details card");
+    await userEvent.click(within(column).getByRole("button", { name: /add card/i }));
+
+    expect(within(column).getByText("No details yet.")).toBeInTheDocument();
+  });
+
+  it("cancels adding a card", async () => {
+    render(<KanbanBoard />);
+    const column = getFirstColumn();
+    await userEvent.click(
+      within(column).getByRole("button", { name: /add a card/i })
+    );
+
+    expect(within(column).getByPlaceholderText(/card title/i)).toBeInTheDocument();
+
+    await userEvent.click(within(column).getByRole("button", { name: /cancel/i }));
+
+    expect(within(column).queryByPlaceholderText(/card title/i)).not.toBeInTheDocument();
+  });
+
+  it("does not add a card with empty title", async () => {
+    render(<KanbanBoard />);
+    const column = getFirstColumn();
+    const cardCountBefore = within(column).getAllByTestId(/card-/i).length;
+
+    await userEvent.click(
+      within(column).getByRole("button", { name: /add a card/i })
+    );
+    await userEvent.click(within(column).getByRole("button", { name: /add card/i }));
+
+    // Form should still be open (not submitted)
+    expect(within(column).getByPlaceholderText(/card title/i)).toBeInTheDocument();
+  });
+
+  it("shows empty column placeholder when all cards removed", async () => {
+    render(<KanbanBoard />);
+    // The "Review" column has only 1 card
+    const reviewColumn = screen.getByTestId("column-col-review");
+    const deleteButton = within(reviewColumn).getByRole("button", {
+      name: /delete/i,
+    });
+    await userEvent.click(deleteButton);
+
+    expect(within(reviewColumn).getByText(/drop a card here/i)).toBeInTheDocument();
+  });
 });

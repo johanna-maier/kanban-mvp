@@ -1,13 +1,37 @@
 import { expect, test } from "@playwright/test";
 
-test("loads the kanban board", async ({ page }) => {
+async function login(page: import("@playwright/test").Page) {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Kanban Studio" })).toBeVisible();
+  await page.getByLabel(/username/i).fill("user");
+  await page.getByLabel(/password/i).fill("password");
+  await page.getByRole("button", { name: /sign in/i }).click();
+  await expect(page.getByText("Kanban Studio")).toBeVisible();
+}
+
+test("shows login form and rejects invalid credentials", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
+
+  await page.getByLabel(/username/i).fill("bad");
+  await page.getByLabel(/password/i).fill("bad");
+  await page.getByRole("button", { name: /sign in/i }).click();
+
+  await expect(page.getByText("Invalid username or password.")).toBeVisible();
+});
+
+test("logs in and shows the kanban board", async ({ page }) => {
+  await login(page);
   await expect(page.locator('[data-testid^="column-"]')).toHaveCount(5);
 });
 
+test("logs out and returns to login", async ({ page }) => {
+  await login(page);
+  await page.getByRole("button", { name: /sign out/i }).click();
+  await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
+});
+
 test("adds a card to a column", async ({ page }) => {
-  await page.goto("/");
+  await login(page);
   const firstColumn = page.locator('[data-testid^="column-"]').first();
   await firstColumn.getByRole("button", { name: /add a card/i }).click();
   await firstColumn.getByPlaceholder("Card title").fill("Playwright card");
@@ -17,7 +41,7 @@ test("adds a card to a column", async ({ page }) => {
 });
 
 test("moves a card between columns", async ({ page }) => {
-  await page.goto("/");
+  await login(page);
   const card = page.getByTestId("card-card-1");
   const targetColumn = page.getByTestId("column-col-review");
   const cardBox = await card.boundingBox();

@@ -5,7 +5,7 @@ import path from "node:path";
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: "jsdom",
+    environment: "happy-dom",
     setupFiles: ["./src/test/setup.ts"],
     globals: true,
     coverage: {
@@ -16,7 +16,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": path.resolve(import.meta.dirname, "./src"),
     },
   },
 });

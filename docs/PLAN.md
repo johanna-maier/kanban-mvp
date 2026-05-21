@@ -1,37 +1,181 @@
-# High level steps for project
+# Project Plan
 
-Part 1: Plan
+This file is the full, executable plan. Do not start a part until the user approves the prior part.
 
-Enrich this document to plan out each of these parts in detail, with substeps listed out as a checklist to be checked off by the agent, and with tests and success critieria for each. Also create an AGENTS.md file inside the frontend directory that describes the existing code there. Ensure the user checks and approves the plan.
+Approval rule: complete Part 1 and obtain user approval before starting Part 2 or later work.
 
-Part 2: Scaffolding
+Sidenote for human user: Original PLAN.md can be found here https://github.com/ed-donner/pm/blob/main/docs/PLAN.md.
 
-Set up the Docker infrastructure, the backend in backend/ with FastAPI, and write the start and stop scripts in the scripts/ directory. This should serve example static HTML to confirm that a 'hello world' example works running locally and also make an API call.
+## Global constraints
 
-Part 3: Add in Frontend
+- Keep changes minimal and focused on the MVP scope.
+- Prefer simple, idiomatic implementations.
+- No extra features.
+- Provide tests for all new behavior.
 
-Now update so that the frontend is statically built and served, so that the app has the demo Kanban board displayed at /. Comprehensive unit and integration tests.
+## Testing best practices
 
-Part 4: Add in a fake user sign in experience
+- Test behaviors, not implementation details.
+- Unit tests for pure logic and component interactions; e2e for full user flows.
+- Drag-and-drop only tested in e2e (requires real browser coordinates).
+- When a bug is fixed, add a regression test that would catch it if it returns.
+- Exclude config files from coverage reporting (not application logic).
+- Target 80%+ statement coverage for application code if all tests are
+- Run coverage with `npm run test:unit -- --coverage` (frontend) or `pytest --cov` (backend).
+- Every new feature gets at least one unit test and one e2e scenario for critical paths.
+- Use `/api/health` for container liveness checks.
 
-Now update so that on first hitting /, you need to log in with dummy credentials ("user", "password") in order to see the Kanban, and you can log out. Comprehensive tests.
+## Part 1: Plan and documentation
 
-Part 5: Database modeling
+Checklist
+- [x] Expand this plan with substeps, tests, and success criteria for every part.
+- [x] Create frontend/AGENTS.md that documents the existing frontend and how to reproduce the current setup.
+- [x] Confirm the plan with the user and pause.
 
-Now propose a database schema for the Kanban, saving it as JSON. Document the database approach in docs/ and get user sign off.
+Tests
+- None (documentation only).
 
-Part 6: Backend
+Success criteria
+- docs/PLAN.md reflects a complete, testable plan.
+- frontend/AGENTS.md accurately documents the current frontend setup.
+- User explicitly approves the plan.
 
-Now add API routes to allow the backend to read and change the Kanban for a given user; test this thoroughly with backend unit tests. The database should be created if it doesn't exist.
+## Part 2: Scaffolding
 
-Part 7: Frontend + Backend
+Checklist
+- [x] Add Docker files using multi-stage build (Node stage builds frontend, Python stage runs FastAPI).
+- [x] Create backend FastAPI app in backend/ using uv as the package manager.
+- [x] Add a GET endpoint such as /api/hello that returns JSON.
+- [x] Add a GET /api/health endpoint for container health checks (Docker HEALTHCHECK).
+- [x] Serve a simple static HTML page from FastAPI for `/` to prove static serving.
+- [x] Add start/stop scripts in scripts/ for macOS, Windows, and Linux.
+- [ ] Document how to run the container locally.
 
-Now have the frontend actually use the backend API, so that the app is a proper persistent Kanban board. Test very throughly.
+Tests
+- Build the container image.
+- `curl http://127.0.0.1:<port>/` returns static HTML.
+- `curl http://127.0.0.1:<port>/api/hello` returns JSON.
 
-Part 8: AI connectivity
+Success criteria
+- Container starts locally with one command and serves both HTML and API.
+- Start/stop scripts operate on all platforms.
 
-Now allow the backend to make an AI call via OpenRouter. Test connectivity with a simple "2+2" test and ensure the AI call is working.
+## Part 3: Add in Frontend
 
-Part 9: Now extend the backend call so that it always calls the AI with the JSON of the Kanban board, plus the user's question (and conversation history). The AI should respond with Structured Outputs that includes the response to the user and optionaly an update to the Kanban. Test thoroughly.
+Note: The current frontend demo does not support card editing (only add/delete). Card editing will be added in Part 7 when the backend is wired up.
 
-Part 10: Now add a beautiful sidebar widget to the UI supporting full AI chat, and allowing the LLM (as it determines) to update the Kanban based on its Structured Outputs. If the AI updates the Kanban, then the UI should refresh automatically.
+Checklist
+- [x] Configure Next.js for static build output.
+- [x] Build the existing frontend and place static files where FastAPI can serve them.
+- [x] Serve the static build from FastAPI at `/`.
+- [x] Ensure routing, assets, and CSS load correctly in the container.
+- [x] Update or add tests where needed.
+
+Tests
+- Frontend unit tests: `npm run test:unit`.
+- Frontend e2e tests: `npm run test:e2e`.
+- Manual check: open `/` in the container and confirm the Kanban board renders.
+
+Success criteria
+- The existing Kanban UI is served at `/` via FastAPI.
+- Tests pass in local dev and containerized runs.
+
+## Part 4: Fake sign in
+
+Checklist
+- [x] Add login UI gating in the frontend.
+- [x] Accept only `user` / `password`.
+- [x] Add logout and session reset behavior.
+- [x] Add tests for login and logout.
+
+Tests
+- Unit tests cover login/logout UI state.
+- E2E test verifies access control and logout.
+
+Success criteria
+- Board requires dummy login, logout works, tests pass.
+
+## Part 5: Database modeling
+
+Checklist
+- [ ] Propose a SQLite schema for users, boards, columns, and cards.
+- [ ] Save the schema as JSON in docs/ (e.g., docs/db-schema.json).
+- [ ] Document the modeling rationale and migration plan in docs/.
+- [ ] Obtain user approval before implementation.
+
+Tests
+- JSON schema validates (basic structure check).
+
+Success criteria
+- Database model is documented and approved.
+
+## Part 6: Backend
+
+Checklist
+- [ ] Implement CRUD endpoints for board data.
+- [ ] Ensure database is created if missing.
+- [ ] Add backend unit tests for persistence and API behavior.
+
+Tests
+- Backend unit tests pass.
+- Manual curl checks for create/read/update flows.
+
+Success criteria
+- Backend reliably persists Kanban data per user.
+
+## Part 7: Frontend + Backend
+
+Checklist
+- [ ] Replace frontend local state with API-backed state.
+- [ ] Implement API calls for load, update, and move operations.
+- [ ] Ensure UI stays in sync with backend data.
+- [ ] Add integration coverage.
+
+Tests
+- E2E covers create/move/rename with persistence.
+
+Success criteria
+- Board changes persist across reloads.
+
+## Part 8: AI connectivity
+
+Checklist
+- [ ] Add OpenRouter client in backend with env config.
+- [ ] Implement a simple `2+2` test endpoint.
+- [ ] Add unit tests with mock client.
+
+Tests
+- Unit test mocks OpenRouter client.
+- Manual test hits the `2+2` endpoint.
+
+Success criteria
+- Backend can call OpenRouter successfully.
+
+## Part 9: Structured AI updates
+
+Checklist
+- [ ] Define structured output schema for AI response and optional board update.
+- [ ] Send board JSON and conversation history to the model.
+- [ ] Validate AI output and apply updates safely.
+- [ ] Add tests for schema validation and update logic.
+
+Tests
+- Contract tests for schema validation.
+- Unit tests for update application.
+
+Success criteria
+- Valid structured responses update the board safely.
+
+## Part 10: AI sidebar
+
+Checklist
+- [ ] Build sidebar chat UI in the frontend.
+- [ ] Wire chat UI to backend AI endpoint.
+- [ ] Apply AI board updates and refresh UI.
+- [ ] Add e2e coverage for chat and update flows.
+
+Tests
+- E2E chat test confirms responses and board updates.
+
+Success criteria
+- Sidebar chat works end-to-end with optional board updates.
