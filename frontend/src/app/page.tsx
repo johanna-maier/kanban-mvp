@@ -3,27 +3,29 @@
 import { useState } from "react";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { LoginForm } from "@/components/LoginForm";
+import * as api from "@/lib/api";
 
 export default function Home() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userId, setUserId] = useState<number | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  const handleLoginAttempt = (username: string, password: string) => {
-    if (username === "user" && password === "password") {
+  const handleLoginAttempt = async (username: string, password: string) => {
+    try {
+      const result = await api.login(username, password);
       setLoginError(null);
-      setIsLoggedIn(true);
-    } else {
+      setUserId(result.user_id);
+    } catch {
       setLoginError("Invalid username or password.");
     }
   };
 
   const handleLogout = () => {
-    setIsLoggedIn(false);
+    setUserId(null);
   };
 
-  if (!isLoggedIn) {
+  if (userId === null) {
     return <LoginForm onLoginAttempt={handleLoginAttempt} error={loginError} />;
   }
 
-  return <KanbanBoard onLogout={handleLogout} />;
+  return <KanbanBoard userId={userId} onLogout={handleLogout} />;
 }

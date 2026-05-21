@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -13,15 +13,50 @@ import {
 } from "@dnd-kit/core";
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
-import { createId, initialData, moveCard, type BoardData } from "@/lib/kanban";
+import * as api from "@/lib/api";
+import type { ApiBoard, ApiCard } from "@/lib/api";
+import type { Card, Column, BoardData } from "@/lib/kanban";
+import { moveCard as moveCardLocal } from "@/lib/kanban";
 
 type KanbanBoardProps = {
+  userId: number;
   onLogout?: () => void;
 };
 
-export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
-  const [board, setBoard] = useState<BoardData>(() => initialData);
+function apiBoardToBoardData(apiBoard: ApiBoard): BoardData {
+  const cards: Record<string, Card> = {};
+  const columns: Column[] = apiBoard.columns.map((col) => {
+    const cardIds = col.cards.map((c) => `card-${c.id}`);
+    for (const c of col.cards) {
+      cards[`card-${c.id}`] = { id: `card-${c.id}`, title: c.title, details: c.details };
+    }
+    return { id: `col-${col.id}`, title: col.title, cardIds };
+  });
+  return { columns, cards };
+}
+
+function parseColumnId(id: string): number {
+  return Number(id.replace("col-", ""));
+}
+
+function parseCardId(id: string): number {
+  return Number(id.replace("card-", ""));
+}
+
+export const KanbanBoard = ({ userId, onLogout }: KanbanBoardProps) => {
+  const [board, setBoard] = useState<BoardData | null>(null);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [apiBoard, setApiBoard] = useState<ApiBoard | null>(null);
+
+  const loadBoard = useCallback(async () => {
+    const data = await api.getBoard(userId);
+    setApiBoard(data);
+    setBoard(apiBoardToBoardData(data));
+  }, [userId]);
+
+  useEffect(() => {
+    loadBoard();
+  }, [loadBoard]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -29,71 +64,99 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
     })
   );
 
-  const cardsById = useMemo(() => board.cards, [board.cards]);
+  const cardsById = useMemo(() => board?.cards ?? {}, [board?.cards]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveCardId(event.active.id as string);
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveCardId(null);
 
-    if (!over || active.id === over.id) {
-      return;
-    }
+    if (!over || active.id === over.id || !board || !apiBoard) return;
 
-    setBoard((prev) => ({
-      ...prev,
-      columns: moveCard(prev.columns, active.id as string, over.id as string),
-    }));
+    // Optimistic local update
+    const newColumns = moveCardLocal(board.columns, active.id as string, over.id as string);
+    setBoard((prev) => prev ? { ...prev, columns: newColumns } : prev);
+
+    // Find the target column and position
+    const targetColumn = newColumns.find((col) =>
+      col.cardIds.includes(active.id as string)
+    );
+    if (!targetColumn) return;
+
+    const position = targetColumn.cardIds.indexOf(active.id as string);
+    const columnId = parseColumnId(targetColumn.id);
+    const cardId = parseCardId(active.id as string);
+
+    await api.moveCard(cardId, columnId, position);
   };
 
-  const handleRenameColumn = (columnId: string, title: string) => {
-    setBoard((prev) => ({
-      ...prev,
-      columns: prev.columns.map((column) =>
-        column.id === columnId ? { ...column, title } : column
-      ),
-    }));
+  const handleRenameColumn = async (columnId: string, title: string) => {
+    setBoard((prev) =>
+      prev
+        ? {
+            ...prev,
+            columns: prev.columns.map((col) =>
+              col.id === columnId ? { ...col, title } : col
+            ),
+          }
+        : prev
+    );
+    await api.renameColumn(parseColumnId(columnId), title);
   };
 
-  const handleAddCard = (columnId: string, title: string, details: string) => {
-    const id = createId("card");
-    setBoard((prev) => ({
-      ...prev,
-      cards: {
-        ...prev.cards,
-        [id]: { id, title, details: details || "No details yet." },
-      },
-      columns: prev.columns.map((column) =>
-        column.id === columnId
-          ? { ...column, cardIds: [...column.cardIds, id] }
-          : column
-      ),
-    }));
+  const handleAddCard = async (columnId: string, title: string, details: string) => {
+    const cardDetails = details || "No details yet.";
+    const result = await api.createCard(parseColumnId(columnId), title, cardDetails);
+    const newId = `card-${result.id}`;
+    setBoard((prev) =>
+      prev
+        ? {
+            ...prev,
+            cards: {
+              ...prev.cards,
+              [newId]: { id: newId, title, details: cardDetails },
+            },
+            columns: prev.columns.map((col) =>
+              col.id === columnId
+                ? { ...col, cardIds: [...col.cardIds, newId] }
+                : col
+            ),
+          }
+        : prev
+    );
   };
 
-  const handleDeleteCard = (columnId: string, cardId: string) => {
-    setBoard((prev) => {
-      return {
-        ...prev,
-        cards: Object.fromEntries(
-          Object.entries(prev.cards).filter(([id]) => id !== cardId)
-        ),
-        columns: prev.columns.map((column) =>
-          column.id === columnId
-            ? {
-                ...column,
-                cardIds: column.cardIds.filter((id) => id !== cardId),
-              }
-            : column
-        ),
-      };
-    });
+  const handleDeleteCard = async (columnId: string, cardId: string) => {
+    setBoard((prev) =>
+      prev
+        ? {
+            ...prev,
+            cards: Object.fromEntries(
+              Object.entries(prev.cards).filter(([id]) => id !== cardId)
+            ),
+            columns: prev.columns.map((col) =>
+              col.id === columnId
+                ? { ...col, cardIds: col.cardIds.filter((id) => id !== cardId) }
+                : col
+            ),
+          }
+        : prev
+    );
+    await api.deleteCard(parseCardId(cardId));
   };
 
   const activeCard = activeCardId ? cardsById[activeCardId] : null;
+
+  if (!board) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-sm text-[var(--gray-text)]">Loading board...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="relative overflow-hidden">

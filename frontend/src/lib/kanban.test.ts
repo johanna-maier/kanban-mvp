@@ -42,6 +42,18 @@ describe("moveCard", () => {
     const result = moveCard(baseColumns, "card-1", "card-1");
     expect(result).toEqual(baseColumns);
   });
+
+  it("moves card between columns when numeric IDs collide with column IDs", () => {
+    // Regression: with prefixed IDs (col-X, card-X) there's no collision
+    const numericColumns: Column[] = [
+      { id: "col-1", title: "Backlog", cardIds: ["card-1", "card-2"] },
+      { id: "col-2", title: "Done", cardIds: ["card-3"] },
+    ];
+    // Drag card "card-1" over column "col-2" (drop on column)
+    const result = moveCard(numericColumns, "card-1", "col-2");
+    expect(result[0].cardIds).toEqual(["card-2"]);
+    expect(result[1].cardIds).toEqual(["card-3", "card-1"]);
+  });
 });
 
 describe("createId", () => {

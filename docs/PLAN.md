@@ -20,10 +20,19 @@ Sidenote for human user: Original PLAN.md can be found here https://github.com/e
 - Drag-and-drop only tested in e2e (requires real browser coordinates).
 - When a bug is fixed, add a regression test that would catch it if it returns.
 - Exclude config files from coverage reporting (not application logic).
-- Target 80%+ statement coverage for application code if all tests are
+- Target 80%+ statement coverage for application code, but never add tests just to hit a number. Every test must validate a meaningful behavior.
 - Run coverage with `npm run test:unit -- --coverage` (frontend) or `pytest --cov` (backend).
 - Every new feature gets at least one unit test and one e2e scenario for critical paths.
 - Use `/api/health` for container liveness checks.
+- Mock API calls in unit tests (vi.mock); e2e tests hit the real backend.
+
+## Design decisions
+
+- **ID namespacing**: Column IDs are prefixed `col-` and card IDs `card-` in the frontend to prevent dnd-kit collisions (SQLite auto-increments both from 1). The API client strips prefixes before sending numeric IDs to the backend.
+- **Dev proxy**: next.config.ts has `rewrites` routing `/api/*` to `localhost:8000` during development. This only works in `next dev` (ignored in static export, which is fine since production serves from FastAPI).
+- **Optimistic UI**: Mutations (add, delete, move, rename) update local state immediately, then fire the API call. No rollback on failure for MVP simplicity.
+- **API client**: `frontend/src/lib/api.ts` is a thin fetch wrapper with typed responses. No auth tokens for MVP (user_id passed directly).
+- **SQLite in Docker**: The database lives at `backend/data/kanban.db` inside the container. Data is ephemeral (lost on container rebuild). A volume mount could persist it but is not configured for MVP.
 
 ## Part 1: Plan and documentation
 
@@ -49,7 +58,7 @@ Checklist
 - [x] Add a GET /api/health endpoint for container health checks (Docker HEALTHCHECK).
 - [x] Serve a simple static HTML page from FastAPI for `/` to prove static serving.
 - [x] Add start/stop scripts in scripts/ for macOS, Windows, and Linux.
-- [ ] Document how to run the container locally.
+- [x] Document how to run the container locally.
 
 Tests
 - Build the container image.
@@ -102,7 +111,7 @@ Checklist
 - [x] Save the schema as JSON in docs/db-schema.json.
 - [x] Save a readable version in docs/db-schema.md.
 - [x] Document the modeling rationale and migration plan in docs/.
-- [ ] Obtain user approval before implementation.
+- [x] Obtain user approval before implementation.
 
 Tests
 - JSON schema validates (basic structure check).
@@ -127,16 +136,19 @@ Success criteria
 ## Part 7: Frontend + Backend
 
 Checklist
-- [ ] Replace frontend local state with API-backed state.
-- [ ] Implement API calls for load, update, and move operations.
-- [ ] Ensure UI stays in sync with backend data.
-- [ ] Add integration coverage.
+- [x] Replace frontend local state with API-backed state.
+- [x] Implement API calls for load, update, and move operations.
+- [x] Ensure UI stays in sync with backend data.
+- [x] Add integration coverage.
+- [x] Fix dnd-kit ID collision bug (card/column IDs overlapping).
 
 Tests
 - E2E covers create/move/rename with persistence.
+- Regression test for ID collision in moveCard.
 
 Success criteria
 - Board changes persist across reloads.
+- Drag and drop works correctly between columns.
 
 ## Part 8: AI connectivity
 

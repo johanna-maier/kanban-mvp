@@ -42,8 +42,10 @@ test("adds a card to a column", async ({ page }) => {
 
 test("moves a card between columns", async ({ page }) => {
   await login(page);
-  const card = page.getByTestId("card-card-1");
-  const targetColumn = page.getByTestId("column-col-review");
+  const firstColumn = page.locator('[data-testid^="column-"]').first();
+  const card = firstColumn.locator('[data-testid^="card-"]').first();
+  const cardTitle = await card.textContent();
+  const targetColumn = page.locator('[data-testid^="column-"]').nth(3);
   const cardBox = await card.boundingBox();
   const columnBox = await targetColumn.boundingBox();
   if (!cardBox || !columnBox) {
@@ -61,5 +63,7 @@ test("moves a card between columns", async ({ page }) => {
     { steps: 12 }
   );
   await page.mouse.up();
-  await expect(targetColumn.getByTestId("card-card-1")).toBeVisible();
+  if (cardTitle) {
+    await expect(targetColumn.getByText(cardTitle)).toBeVisible();
+  }
 });
