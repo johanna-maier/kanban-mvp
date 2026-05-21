@@ -98,9 +98,10 @@ Success criteria
 ## Part 5: Database modeling
 
 Checklist
-- [ ] Propose a SQLite schema for users, boards, columns, and cards.
-- [ ] Save the schema as JSON in docs/ (e.g., docs/db-schema.json).
-- [ ] Document the modeling rationale and migration plan in docs/.
+- [x] Propose a SQLite schema for users, boards, columns, and cards.
+- [x] Save the schema as JSON in docs/db-schema.json.
+- [x] Save a readable version in docs/db-schema.md.
+- [x] Document the modeling rationale and migration plan in docs/.
 - [ ] Obtain user approval before implementation.
 
 Tests
@@ -112,9 +113,9 @@ Success criteria
 ## Part 6: Backend
 
 Checklist
-- [ ] Implement CRUD endpoints for board data.
-- [ ] Ensure database is created if missing.
-- [ ] Add backend unit tests for persistence and API behavior.
+- [x] Implement CRUD endpoints for board data.
+- [x] Ensure database is created if missing.
+- [x] Add backend unit tests for persistence and API behavior.
 
 Tests
 - Backend unit tests pass.
