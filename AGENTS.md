@@ -17,7 +17,8 @@ For the MVP, there will only be 1 Kanban board per signed in user.
 
 For the MVP, this will run locally (in a docker container)
 
-The API endpoints do not verify that the caller owns the resource they are accessing (no auth tokens). Board and card endpoints accept any valid user_id. This is intentional for the MVP (localhost only) but must be addressed before any public deployment.
+Initially, the API endpoints do not verify that the caller owns the resource they are accessing (no auth tokens). Board and card endpoints accept any valid user_id. This was intentional for the MVP (localhost only) but must be addressed before any public deployment.
+
 
 ## Technical Decisions
 
